@@ -10,7 +10,7 @@
   "description": "Single Pterodactyl webstack appliance: Apache/PHP website on the primary allocation, phpMyAdmin on a second allocation, and MariaDB bound only to 127.0.0.1 inside the container. TLS is expected to terminate at an external Nginx reverse proxy.",
   "features": null,
   "docker_images": {
-    "Webstack PHP 8.4": "ghcr.io/replace-me/pterodactyl-webstack:0.1.0"
+    "Webstack PHP 8.4": "ghcr.io/ajoker96/pterodactyl-webstack:0.1.0"
   },
   "file_denylist": [],
   "startup": "/opt/webstack/start.sh",
