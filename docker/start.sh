@@ -39,22 +39,31 @@ fatal() {
 validate_identifier() {
     local value="$1"
     local label="$2"
-    [[ "$value" =~ ^[A-Za-z0-9_]{1,64}$ ]] || fatal "${label} must match ^[A-Za-z0-9_]{1,64}$"
+
+    [[ "$value" =~ ^[A-Za-z0-9_]{1,64}$ ]] \
+        || fatal "${label} must match ^[A-Za-z0-9_]{1,64}$"
 }
 
 validate_port() {
     local value="$1"
     local label="$2"
-    [[ "$value" =~ ^[0-9]+$ ]] || fatal "${label} must be numeric"
-    (( value >= 1024 && value <= 65535 )) || fatal "${label} must be between 1024 and 65535"
+
+    [[ "$value" =~ ^[0-9]+$ ]] \
+        || fatal "${label} must be numeric"
+
+    (( value >= 1024 && value <= 65535 )) \
+        || fatal "${label} must be between 1024 and 65535"
 }
 
 validate_identifier "$DATABASE_NAME" "DATABASE_NAME"
 validate_identifier "$DATABASE_USER" "DATABASE_USER"
 validate_identifier "$DATABASE_ADMIN_USER" "DATABASE_ADMIN_USER"
+
 validate_port "$WEB_PORT" "SERVER_PORT"
 validate_port "$PMA_PORT" "PHPMYADMIN_PORT"
-[[ "$WEB_PORT" != "$PMA_PORT" ]] || fatal "SERVER_PORT and PHPMYADMIN_PORT must be different"
+
+[[ "$WEB_PORT" != "$PMA_PORT" ]] \
+    || fatal "SERVER_PORT and PHPMYADMIN_PORT must be different"
 
 mkdir -p \
     "$PUBLIC_DIR" \
@@ -66,21 +75,35 @@ mkdir -p \
     "$PMA_TMP_DIR"
 
 chmod 0700 "$CONFIG_DIR"
-chmod 0755 "$PUBLIC_DIR" "$LOG_DIR" "$RUN_DIR" "$TMP_DIR" "$MARIADB_RUN_DIR" "$APACHE_RUN_DIR" "$PMA_TMP_DIR"
+
+chmod 0755 \
+    "$PUBLIC_DIR" \
+    "$LOG_DIR" \
+    "$RUN_DIR" \
+    "$TMP_DIR" \
+    "$MARIADB_RUN_DIR" \
+    "$APACHE_RUN_DIR" \
+    "$PMA_TMP_DIR"
 
 if [[ ! -s "$PMA_SECRET_FILE" ]]; then
     umask 077
     openssl rand -hex 16 > "$PMA_SECRET_FILE"
     log "Generated persistent phpMyAdmin cookie secret."
 fi
+
 chmod 0600 "$PMA_SECRET_FILE"
 
 export WEB_PORT PMA_PORT
+
 envsubst '${WEB_PORT} ${PMA_PORT}' \
     < /opt/webstack/templates/apache2.conf.template \
     > "$APACHE_CONFIG"
+
 cp /opt/webstack/templates/my.cnf "$MARIADB_CONFIG"
-chmod 0600 "$APACHE_CONFIG" "$MARIADB_CONFIG"
+
+chmod 0600 \
+    "$APACHE_CONFIG" \
+    "$MARIADB_CONFIG"
 
 if [[ ! -f "$PUBLIC_DIR/index.php" ]]; then
     cat > "$PUBLIC_DIR/index.php" <<'PHP'
@@ -106,18 +129,24 @@ HTACCESS
 fi
 
 load_credentials() {
-    [[ -s "$DB_ENV_FILE" ]] || fatal "Database credentials file is missing: ${DB_ENV_FILE}"
+    [[ -s "$DB_ENV_FILE" ]] \
+        || fatal "Database credentials file is missing: ${DB_ENV_FILE}"
+
     # shellcheck disable=SC1090
     source "$DB_ENV_FILE"
 }
 
 write_credentials() {
-    local root_password app_password admin_password
+    local root_password
+    local app_password
+    local admin_password
+
     root_password="$(openssl rand -hex 24)"
     app_password="$(openssl rand -hex 24)"
     admin_password="$(openssl rand -hex 24)"
 
     umask 077
+
     cat > "$DB_ENV_FILE" <<EOF_CREDENTIALS
 DB_HOST=127.0.0.1
 DB_PORT=3306
@@ -128,50 +157,71 @@ DB_ADMIN_USER=${DATABASE_ADMIN_USER}
 DB_ADMIN_PASSWORD=${admin_password}
 DB_ROOT_PASSWORD=${root_password}
 EOF_CREDENTIALS
+
     chmod 0600 "$DB_ENV_FILE"
 }
 
 start_mariadb() {
-    mariadbd --defaults-file="$MARIADB_CONFIG" &
+    /usr/sbin/mariadbd \
+        --defaults-file="$MARIADB_CONFIG" &
+
     MARIADB_PID=$!
 }
 
 wait_for_mariadb_noauth() {
     local i
+
     for i in $(seq 1 60); do
-        if mariadb-admin --protocol=socket --socket="$MARIADB_SOCKET" -u root ping --silent >/dev/null 2>&1; then
+        if /usr/bin/mariadb-admin \
+            --protocol=socket \
+            --socket="$MARIADB_SOCKET" \
+            -u root \
+            ping \
+            --silent >/dev/null 2>&1; then
+
             return 0
         fi
+
         if ! kill -0 "$MARIADB_PID" 2>/dev/null; then
             fatal "MariaDB exited during initial startup"
         fi
+
         sleep 1
     done
+
     fatal "MariaDB did not become ready during initial startup"
 }
 
 wait_for_mariadb_auth() {
     local i
+
     for i in $(seq 1 60); do
-        if MYSQL_PWD="$DB_ADMIN_PASSWORD" mariadb-admin \
+        if MYSQL_PWD="$DB_ADMIN_PASSWORD" \
+            /usr/bin/mariadb-admin \
             --protocol=tcp \
             --host=127.0.0.1 \
             --port=3306 \
             --user="$DB_ADMIN_USER" \
-            ping --silent >/dev/null 2>&1; then
+            ping \
+            --silent >/dev/null 2>&1; then
+
             return 0
         fi
+
         if ! kill -0 "$MARIADB_PID" 2>/dev/null; then
             fatal "MariaDB exited during startup"
         fi
+
         sleep 1
     done
+
     fatal "MariaDB did not become ready"
 }
 
 initialize_database() {
     log "Initializing MariaDB data directory..."
-    mariadb-install-db \
+
+    /usr/bin/mariadb-install-db \
         --defaults-file="$MARIADB_CONFIG" \
         --auth-root-authentication-method=normal \
         --skip-test-db >/dev/null
@@ -183,7 +233,11 @@ initialize_database() {
     wait_for_mariadb_noauth
 
     log "Creating database and local application/admin users..."
-    mariadb --protocol=socket --socket="$MARIADB_SOCKET" -u root <<SQL
+
+    /usr/bin/mariadb \
+        --protocol=socket \
+        --socket="$MARIADB_SOCKET" \
+        -u root <<SQL
 ALTER USER 'root'@'localhost' IDENTIFIED BY '${DB_ROOT_PASSWORD}';
 CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE USER IF NOT EXISTS '${DB_USER}'@'127.0.0.1' IDENTIFIED BY '${DB_PASSWORD}';
@@ -195,10 +249,13 @@ GRANT ALL PRIVILEGES ON *.* TO '${DB_ADMIN_USER}'@'127.0.0.1' WITH GRANT OPTION;
 FLUSH PRIVILEGES;
 SQL
 
-    MYSQL_PWD="$DB_ROOT_PASSWORD" mariadb-admin \
+    MYSQL_PWD="$DB_ROOT_PASSWORD" \
+        /usr/bin/mariadb-admin \
         --protocol=socket \
         --socket="$MARIADB_SOCKET" \
-        -u root shutdown
+        -u root \
+        shutdown
+
     wait "$MARIADB_PID" || true
     MARIADB_PID=""
 
@@ -211,29 +268,42 @@ shutdown_services() {
     if (( SHUTTING_DOWN == 1 )); then
         return
     fi
+
     SHUTTING_DOWN=1
 
     log "Stopping webstack..."
 
-    if [[ -n "$APACHE_PID" ]] && kill -0 "$APACHE_PID" 2>/dev/null; then
+    if [[ -n "$APACHE_PID" ]] \
+        && kill -0 "$APACHE_PID" 2>/dev/null; then
+
         kill -TERM "$APACHE_PID" 2>/dev/null || true
     fi
 
-    if [[ -n "$MARIADB_PID" ]] && kill -0 "$MARIADB_PID" 2>/dev/null; then
+    if [[ -n "$MARIADB_PID" ]] \
+        && kill -0 "$MARIADB_PID" 2>/dev/null; then
+
         if [[ -n "${DB_ADMIN_PASSWORD:-}" ]]; then
-            MYSQL_PWD="$DB_ADMIN_PASSWORD" mariadb-admin \
+            MYSQL_PWD="$DB_ADMIN_PASSWORD" \
+                /usr/bin/mariadb-admin \
                 --protocol=tcp \
                 --host=127.0.0.1 \
                 --port=3306 \
                 --user="$DB_ADMIN_USER" \
-                shutdown >/dev/null 2>&1 || kill -TERM "$MARIADB_PID" 2>/dev/null || true
+                shutdown >/dev/null 2>&1 \
+                || kill -TERM "$MARIADB_PID" 2>/dev/null \
+                || true
         else
             kill -TERM "$MARIADB_PID" 2>/dev/null || true
         fi
     fi
 
-    [[ -z "$APACHE_PID" ]] || wait "$APACHE_PID" 2>/dev/null || true
-    [[ -z "$MARIADB_PID" ]] || wait "$MARIADB_PID" 2>/dev/null || true
+    [[ -z "$APACHE_PID" ]] \
+        || wait "$APACHE_PID" 2>/dev/null \
+        || true
+
+    [[ -z "$MARIADB_PID" ]] \
+        || wait "$MARIADB_PID" 2>/dev/null \
+        || true
 
     exit "$exit_code"
 }
@@ -246,7 +316,10 @@ fi
 
 load_credentials
 
-if [[ "$DB_NAME" != "$DATABASE_NAME" || "$DB_USER" != "$DATABASE_USER" || "$DB_ADMIN_USER" != "$DATABASE_ADMIN_USER" ]]; then
+if [[ "$DB_NAME" != "$DATABASE_NAME" \
+    || "$DB_USER" != "$DATABASE_USER" \
+    || "$DB_ADMIN_USER" != "$DATABASE_ADMIN_USER" ]]; then
+
     log "WARNING: Database variables changed after first initialization."
     log "Persistent credentials in config/database.env remain authoritative."
 fi
@@ -254,10 +327,14 @@ fi
 start_mariadb
 wait_for_mariadb_auth
 
-apache2 -f "$APACHE_CONFIG" -DFOREGROUND &
+/usr/sbin/apache2 \
+    -f "$APACHE_CONFIG" \
+    -DFOREGROUND &
+
 APACHE_PID=$!
 
 sleep 1
+
 if ! kill -0 "$APACHE_PID" 2>/dev/null; then
     wait "$APACHE_PID" || true
     fatal "Apache exited during startup"
@@ -266,9 +343,12 @@ fi
 log "ready web=${WEB_PORT} phpmyadmin=${PMA_PORT} database=127.0.0.1:3306"
 
 set +e
+
 wait -n "$MARIADB_PID" "$APACHE_PID"
 EXIT_CODE=$?
+
 set -e
 
 log "A managed service exited with status ${EXIT_CODE}; stopping the stack."
+
 shutdown_services "$EXIT_CODE"
