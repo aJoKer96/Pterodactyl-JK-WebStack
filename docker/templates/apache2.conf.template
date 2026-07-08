@@ -1,0 +1,55 @@
+ServerRoot "/etc/apache2"
+DefaultRuntimeDir "/home/container/run/apache2"
+PidFile "/home/container/run/apache2/apache2.pid"
+ServerName localhost
+
+Listen ${WEB_PORT}
+Listen ${PMA_PORT}
+
+IncludeOptional /etc/apache2/mods-enabled/*.load
+IncludeOptional /etc/apache2/mods-enabled/*.conf
+
+User container
+Group container
+
+ErrorLog /proc/self/fd/2
+LogLevel warn
+LogFormat "%h %l %u %t \"%r\" %>s %b \"%{Referer}i\" \"%{User-Agent}i\"" combined
+CustomLog /proc/self/fd/1 combined
+
+TypesConfig /etc/mime.types
+DirectoryIndex index.php index.html
+AccessFileName .htaccess
+
+<Directory />
+    AllowOverride None
+    Require all denied
+</Directory>
+
+<VirtualHost *:${WEB_PORT}>
+    DocumentRoot "/home/container/public"
+
+    <Directory "/home/container/public">
+        Options FollowSymLinks
+        AllowOverride All
+        Require all granted
+    </Directory>
+</VirtualHost>
+
+<VirtualHost *:${PMA_PORT}>
+    DocumentRoot "/opt/webstack/phpmyadmin"
+
+    <Directory "/opt/webstack/phpmyadmin">
+        Options FollowSymLinks
+        AllowOverride None
+        Require all granted
+    </Directory>
+
+    <Directory "/opt/webstack/phpmyadmin/setup">
+        Require all denied
+    </Directory>
+
+    <Directory "/opt/webstack/phpmyadmin/libraries">
+        Require all denied
+    </Directory>
+</VirtualHost>

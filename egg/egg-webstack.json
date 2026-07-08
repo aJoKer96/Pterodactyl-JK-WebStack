@@ -1,0 +1,72 @@
+{
+  "_comment": "DO NOT EDIT: FILE GENERATED FOR PTERODACTYL PANEL - PTERODACTYL.IO",
+  "meta": {
+    "version": "PTDL_v2",
+    "update_url": null
+  },
+  "exported_at": "2026-07-08T08:00:00+02:00",
+  "name": "Webstack - Apache PHP MariaDB phpMyAdmin",
+  "author": "jonas@local.invalid",
+  "description": "Single Pterodactyl webstack appliance: Apache/PHP website on the primary allocation, phpMyAdmin on a second allocation, and MariaDB bound only to 127.0.0.1 inside the container. TLS is expected to terminate at an external Nginx reverse proxy.",
+  "features": null,
+  "docker_images": {
+    "Webstack PHP 8.4": "ghcr.io/replace-me/pterodactyl-webstack:0.1.0"
+  },
+  "file_denylist": [],
+  "startup": "/opt/webstack/start.sh",
+  "config": {
+    "files": "{}",
+    "startup": "{\r\n  \"done\": \"[webstack] ready\"\r\n}",
+    "logs": "{}",
+    "stop": "^C"
+  },
+  "scripts": {
+    "installation": {
+      "script": "#!/bin/bash\nset -euo pipefail\n\nmkdir -p /mnt/server/public /mnt/server/config /mnt/server/database /mnt/server/logs\n\nif [ ! -f /mnt/server/public/index.php ]; then\ncat > /mnt/server/public/index.php <<'PHP'\n<?php\nheader('Content-Type: text/plain; charset=utf-8');\n\nif (isset($_GET['webstack_rewrite'])) {\n    echo \"mod_rewrite=ok\\n\";\n    exit;\n}\n\necho \"Pterodactyl Webstack OK\\n\";\necho \"PHP=\" . PHP_VERSION . \"\\n\";\necho \"Rewrite test: /__webstack/rewrite-test\\n\";\nPHP\nfi\n\nif [ ! -f /mnt/server/public/.htaccess ]; then\ncat > /mnt/server/public/.htaccess <<'HTACCESS'\nRewriteEngine On\nRewriteRule ^__webstack/rewrite-test/?$ index.php?webstack_rewrite=1 [END,QSA]\nHTACCESS\nfi\n\necho \"Webstack server files prepared.\"",
+      "container": "ghcr.io/ptero-eggs/installers:debian",
+      "entrypoint": "bash"
+    }
+  },
+  "variables": [
+    {
+      "name": "phpMyAdmin Port",
+      "description": "Must match the server's second Pterodactyl allocation. The egg cannot discover additional allocation ports automatically.",
+      "env_variable": "PHPMYADMIN_PORT",
+      "default_value": "18082",
+      "user_viewable": true,
+      "user_editable": false,
+      "rules": "required|integer|between:1024,65535",
+      "field_type": "text"
+    },
+    {
+      "name": "Database Name",
+      "description": "Initial application database name. Only used on first MariaDB initialization.",
+      "env_variable": "DATABASE_NAME",
+      "default_value": "webapp",
+      "user_viewable": true,
+      "user_editable": false,
+      "rules": "required|regex:/^[A-Za-z0-9_]{1,64}$/",
+      "field_type": "text"
+    },
+    {
+      "name": "Database User",
+      "description": "Initial application database user. Credentials are generated on first boot and stored in config/database.env.",
+      "env_variable": "DATABASE_USER",
+      "default_value": "webapp",
+      "user_viewable": true,
+      "user_editable": false,
+      "rules": "required|regex:/^[A-Za-z0-9_]{1,64}$/",
+      "field_type": "text"
+    },
+    {
+      "name": "Database Admin User",
+      "description": "MariaDB administrator used for phpMyAdmin and internal health checks. The password is generated on first boot.",
+      "env_variable": "DATABASE_ADMIN_USER",
+      "default_value": "webadmin",
+      "user_viewable": true,
+      "user_editable": false,
+      "rules": "required|regex:/^[A-Za-z0-9_]{1,64}$/",
+      "field_type": "text"
+    }
+  ]
+}
