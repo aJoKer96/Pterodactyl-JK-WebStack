@@ -5,7 +5,8 @@ ARG PHPMYADMIN_SHA256=12ba1c425fa4071abbd4e7668c9ebdeac0b0755a467a6d6d5026122bb4
 
 ENV DEBIAN_FRONTEND=noninteractive \
     USER=container \
-    HOME=/home/container
+    HOME=/home/container \
+    PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 RUN set -eux; \
     printf '#!/bin/sh\nexit 101\n' > /usr/sbin/policy-rc.d; \
