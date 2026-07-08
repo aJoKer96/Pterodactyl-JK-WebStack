@@ -11,6 +11,7 @@ TMP_DIR="${BASE_DIR}/tmp"
 MARIADB_RUN_DIR="${RUN_DIR}/mariadb"
 APACHE_RUN_DIR="${RUN_DIR}/apache2"
 PMA_TMP_DIR="${TMP_DIR}/phpmyadmin"
+PHP_SESSION_DIR="${TMP_DIR}/php-sessions"
 DB_ENV_FILE="${CONFIG_DIR}/database.env"
 PMA_SECRET_FILE="${CONFIG_DIR}/phpmyadmin.secret"
 APACHE_CONFIG="${CONFIG_DIR}/apache2.generated.conf"
@@ -72,9 +73,13 @@ mkdir -p \
     "$LOG_DIR" \
     "$MARIADB_RUN_DIR" \
     "$APACHE_RUN_DIR" \
-    "$PMA_TMP_DIR"
+    "$PMA_TMP_DIR" \
+    "$PHP_SESSION_DIR"
 
-chmod 0700 "$CONFIG_DIR"
+chmod 0700 \
+    "$CONFIG_DIR" \
+    "$PMA_TMP_DIR" \
+    "$PHP_SESSION_DIR"
 
 chmod 0755 \
     "$PUBLIC_DIR" \
@@ -82,8 +87,7 @@ chmod 0755 \
     "$RUN_DIR" \
     "$TMP_DIR" \
     "$MARIADB_RUN_DIR" \
-    "$APACHE_RUN_DIR" \
-    "$PMA_TMP_DIR"
+    "$APACHE_RUN_DIR"
 
 if [[ ! -s "$PMA_SECRET_FILE" ]]; then
     umask 077
