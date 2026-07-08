@@ -21,6 +21,8 @@ TypesConfig /etc/mime.types
 DirectoryIndex index.php index.html
 AccessFileName .htaccess
 
+php_admin_value session.save_path "/home/container/tmp/php-sessions"
+
 <Directory />
     AllowOverride None
     Require all denied
