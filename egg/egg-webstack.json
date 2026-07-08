@@ -6,7 +6,7 @@
   },
   "exported_at": "2026-07-08T08:00:00+02:00",
   "name": "Webstack - Apache PHP MariaDB phpMyAdmin",
-  "author": "jonas@local.invalid",
+  "author": "github.com/aJoKer96",
   "description": "Single Pterodactyl webstack appliance: Apache/PHP website on the primary allocation, phpMyAdmin on a second allocation, and MariaDB bound only to 127.0.0.1 inside the container. TLS is expected to terminate at an external Nginx reverse proxy.",
   "features": null,
   "docker_images": {
