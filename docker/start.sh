@@ -346,6 +346,24 @@ fi
 
 log "ready web=${WEB_PORT} phpmyadmin=${PMA_PORT} database=127.0.0.1:3306"
 
+console_loop() {
+    local command
+
+    while IFS= read -r command; do
+        [[ -n "$command" ]] || continue
+
+        log "console: ${command}"
+
+        (
+            cd /home/container
+            /bin/bash -lc "$command"
+        ) || log "Command exited with status $?"
+    done
+}
+
+console_loop &
+CONSOLE_PID=$!
+
 set +e
 
 wait -n "$MARIADB_PID" "$APACHE_PID"
